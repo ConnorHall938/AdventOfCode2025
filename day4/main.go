@@ -39,9 +39,9 @@ func main() {
 	numberAccessible := 0
 	switch *puzzlePart {
 	case 1:
-		numberAccessible = Puzzle(file)
+		numberAccessible = Puzzle(file, false)
 	case 2:
-		numberAccessible = Puzzle(file)
+		numberAccessible = Puzzle(file, true)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -116,7 +116,9 @@ func createCheckMap(x, y int) CheckMap {
 	return checkMap
 }
 
-func countAvailableRolls(rollmap string) int {
+var rollsToRemove []MapPoint
+
+func removeAvailableRolls(rollmap *string) int {
 	totalCount := 0
 	cellsChecked := 0
 	for x := 0; x < mapWidth; x++ {
@@ -134,6 +136,7 @@ func countAvailableRolls(rollmap string) int {
 					}
 				}
 				if rollCount < 4 {
+					rollsToRemove = append(rollsToRemove, MapPoint{x, y})
 					totalCount += 1
 				}
 			}
@@ -141,15 +144,22 @@ func countAvailableRolls(rollmap string) int {
 
 		}
 	}
-	fmt.Println(cellsChecked)
+
+	mutableMap := []byte(*rollmap)
+	for _, paperRoll := range rollsToRemove {
+		//Is this really necessary
+		mutableMap[paperRoll.x+paperRoll.y*mapWidth] = '.'
+	}
+	*rollmap = string(mutableMap)
+
 	return totalCount
 }
 
-func rollAtPosition(rollmap string, x, y int) bool {
-	return rollmap[x+y*mapWidth] == '@'
+func rollAtPosition(rollmap *string, x, y int) bool {
+	return (*rollmap)[x+y*mapWidth] == '@'
 }
 
-func Puzzle(file *os.File) int {
+func Puzzle(file *os.File, removalProcedure bool) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	rollMap := ""
@@ -163,8 +173,11 @@ func Puzzle(file *os.File) int {
 	}
 
 	fmt.Printf("mapSize %d, %d\n", mapWidth, mapHeight)
-
-	runningTotal = countAvailableRolls(rollMap)
+	previousTotal := 0
+	for ok := true; ok; ok = previousTotal != runningTotal && removalProcedure {
+		previousTotal = runningTotal
+		runningTotal += removeAvailableRolls(&rollMap)
+	}
 
 	return runningTotal
 }
