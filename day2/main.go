@@ -65,15 +65,35 @@ func IsBadIDPart1(id int) int {
 	return 0
 }
 
-func IsBadIDPart2(id int) int {
+func isRepeating(str string, repeatLength int) bool {
+	firstSegment := str[:repeatLength]
+	// fmt.Printf("First segment of %v with repeatLength %d = %v\n", str, repeatLength, firstSegment)
+	for i := repeatLength; i < len(str); i += repeatLength {
+		// fmt.Printf("Comparing first segment %v with current segment %v\n", firstSegment, str[i:i+repeatLength])
+		if str[i:i+repeatLength] != firstSegment {
+			// fmt.Printf("%v is a good ID for repeatLength %d! has no repeating section of %v\n", str, repeatLength, firstSegment)
+			return false
+		}
+	}
+	fmt.Printf("%v is a bad ID! has a repeating section of %v\n", str, firstSegment)
+	return true
+}
 
+func IsBadIDPart2(id int) int {
+	strID := strconv.Itoa(id)
+	for repeatLength := range len(strID) / 2 {
+		if len(strID)%(repeatLength+1) == 0 && isRepeating(strID, repeatLength+1) {
+			return 1
+		}
+		// fmt.Println()
+	}
 	return 0
 }
 
 func CountBetweenRange(startRange, endRange int, counterFunc idCounter) int {
 	count := 0
 	for i := startRange; i <= endRange; i++ {
-		count += i * IsBadIDPart1(i)
+		count += i * counterFunc(i)
 	}
 	return count
 }
