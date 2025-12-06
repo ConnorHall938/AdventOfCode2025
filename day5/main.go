@@ -49,7 +49,7 @@ func main() {
 		fmt.Println("Invalid part number! Please enter 1")
 	}
 
-	fmt.Printf("Sum of fresh ingredients found to be %d\n", numberFresh)
+	fmt.Printf("Total fresh ingredients found to be %d\n", numberFresh)
 }
 
 // Ahhh why does no language natively support this?!
@@ -89,12 +89,15 @@ func appendFreshIngredients(start, end int, list *map[int]bool) {
 func Puzzle(file *os.File) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
+	debugLineCounter := 0
 	freshIngredients := make(map[int]bool)
-	// Input the lines
+	// Input the non-spoiled ingedients
 	for scanner.Scan() {
+		fmt.Printf("Scanning line %d of freshness", debugLineCounter)
 		line := scanner.Text()
 		if line == "" {
 			break
+			debugLineCounter = 0
 		}
 		freshRange := strings.Split(line, "-")
 		freshStart, err := strconv.Atoi(freshRange[0])
@@ -108,9 +111,24 @@ func Puzzle(file *os.File) int {
 			return -1 // Handle the error appropriately
 		}
 		appendFreshIngredients(freshStart, freshEnd, &freshIngredients)
+		debugLineCounter++
 	}
 
 	printSortedKeys(freshIngredients)
+
+	for scanner.Scan() {
+		fmt.Printf("Scanning line %d of ingredients", debugLineCounter)
+		line := scanner.Text()
+		ingredient, err := strconv.Atoi(line)
+		if err != nil {
+			fmt.Printf("Error converting string %v to int: %v\n", line, err)
+			return -1 // Handle the error appropriately
+		}
+		if _, ok := freshIngredients[ingredient]; ok {
+			runningTotal += 1
+		}
+		debugLineCounter++
+	}
 
 	return runningTotal
 }
