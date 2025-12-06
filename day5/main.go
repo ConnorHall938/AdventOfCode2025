@@ -70,34 +70,88 @@ func IntMax(x, y int) int {
 	return y
 }
 
-func printSortedKeys(set map[int]bool) {
-	keys := make([]int, 0, len(set))
-	for k := range set {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
-
-	fmt.Println(keys)
+type freshnessRange struct {
+	start int
+	end   int
 }
 
-func appendFreshIngredients(start, end int, list *map[int]bool) {
-	for i := start; i <= end; i++ {
-		(*list)[i] = true
+// This one is AI because yeah... meaningless
+func printSortedKeys(sets []freshnessRange) {
+	// Make a copy so sorting does not mutate the original slice unless you want it to
+	ranges := make([]freshnessRange, len(sets))
+	copy(ranges, sets)
+
+	// Sort by start, then by end
+	sort.Slice(ranges, func(i, j int) bool {
+		if ranges[i].start == ranges[j].start {
+			return ranges[i].end < ranges[j].end
+		}
+		return ranges[i].start < ranges[j].start
+	})
+
+	// Print the ranges
+	for _, r := range ranges {
+		fmt.Printf("[%d, %d]\n", r.start, r.end)
 	}
+}
+
+func WithinRange(existingRange *freshnessRange, val int) bool {
+	return val >= existingRange.start && val <= existingRange.end
+}
+
+func appendFreshIngredients(start, end int, list *[]freshnessRange) {
+	// Check if we start, end or encompass an existing range
+	for i := range *list {
+		existingRange := &(*list)[i]
+		// Encompass the range, replace it
+		if start < existingRange.start && end > existingRange.end {
+			existingRange.start = start
+			existingRange.end = end
+			return
+		}
+		// Start inside the range
+		if WithinRange(existingRange, start) {
+			// If end is past the range, replace the end of the range
+			if end > existingRange.end {
+				existingRange.end = end
+				return
+			}
+		}
+		// End within the range
+		if WithinRange(existingRange, end) {
+			// if start is before the range, replace the start of the range
+			if start < existingRange.start {
+				existingRange.start = start
+				return
+			}
+		}
+
+	}
+	// This is a new range!
+	*list = append(*list, freshnessRange{start, end})
+}
+
+func IsIngredientFresh(ingredient int, freshIngredientsRanges []freshnessRange) bool {
+	for _, freshRange := range freshIngredientsRanges {
+		if ingredient >= freshRange.start && ingredient <= freshRange.end {
+			return true
+		}
+	}
+	return false
 }
 
 func Puzzle(file *os.File) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	debugLineCounter := 0
-	freshIngredients := make(map[int]bool)
+	freshIngredients := []freshnessRange{}
 	// Input the non-spoiled ingedients
 	for scanner.Scan() {
-		fmt.Printf("Scanning line %d of freshness", debugLineCounter)
+		fmt.Printf("Scanning line %d of freshness\n", debugLineCounter)
 		line := scanner.Text()
 		if line == "" {
-			break
 			debugLineCounter = 0
+			break
 		}
 		freshRange := strings.Split(line, "-")
 		freshStart, err := strconv.Atoi(freshRange[0])
@@ -117,16 +171,21 @@ func Puzzle(file *os.File) int {
 	printSortedKeys(freshIngredients)
 
 	for scanner.Scan() {
-		fmt.Printf("Scanning line %d of ingredients", debugLineCounter)
+		fmt.Printf("Scanning line %d of ingredients - ", debugLineCounter)
 		line := scanner.Text()
 		ingredient, err := strconv.Atoi(line)
 		if err != nil {
 			fmt.Printf("Error converting string %v to int: %v\n", line, err)
 			return -1 // Handle the error appropriately
 		}
-		if _, ok := freshIngredients[ingredient]; ok {
-			runningTotal += 1
+
+		if IsIngredientFresh(ingredient, freshIngredients) {
+			runningTotal++
+			fmt.Println("Fresh")
+		} else {
+			fmt.Println("Not fresh")
 		}
+
 		debugLineCounter++
 	}
 
