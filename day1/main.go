@@ -86,20 +86,25 @@ func PuzzlePart1(startPosition int, file *os.File) int {
 }
 
 // Apparently there isn't a native way for this in go? I'm surprised
-func absDiffInt(x, y int) int {
-	if x < y {
-		return y - x
+func absValInt(x int) int {
+	if x > 0 {
+		return x
 	}
-	return x - y
+	return -1 * x
 }
 
 // Pass end position BEFORE modulus
 func PassedZeroCount(startPosition int, endPosition int) int {
-	diff := absDiffInt(endPosition, startPosition)
-	if endPosition >= 100 || endPosition <= 0 {
-		return (diff / 100) + 1
+	direction := (endPosition - startPosition) / absValInt(endPosition-startPosition)
+	count := 0
+	// There is 100% a better way to do this but I cba right now it's midnight
+	for x := startPosition; x != endPosition; x += direction {
+		//fmt.Printf("x=%d\n", x)
+		if x%100 == 0 {
+			count++
+		}
 	}
-	return 0
+	return count
 }
 
 func ClampToRange(startRange int, endRange int, value int) int {
