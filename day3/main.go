@@ -41,9 +41,9 @@ func main() {
 	sumOfJolt := 0
 	switch *puzzlePart {
 	case 1:
-		sumOfJolt = Puzzle(file, getMaxJoltSize2)
+		sumOfJolt = Puzzle(file, 2)
 	case 2:
-		sumOfJolt = Puzzle(file, getMaxJoltSize12)
+		sumOfJolt = Puzzle(file, 5)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -51,64 +51,15 @@ func main() {
 	fmt.Printf("Sum of jolts found to be %d\n", sumOfJolt)
 }
 
-// Terrible name
-// for example, battery bank 818181911112111
-// MaxJoltsForNAsStart(bank, n-1) would return 11, as the second last 1 is selected, therefore the last must also be selected
-// MaxJoltsForNAsStart(bank, n-2) would also return 11, as the 3rd last 1 is selected, and the max of remaining digits is 1
-// MaxJoltsForNAsStart(bank, n-10) would return 89m as the 11th last digit is selected (8) and the max of the remaining digits is 9
-
-func MaxJoltsSize2(bank []int) int {
-	firstDigit := bank[0]
-	secondDigit := slices.Max(bank[1:])
-	return firstDigit*10 + secondDigit
-}
-
 // Ahhh why does no language natively support this?!
 func IntegerPow(num, exponent int) int {
 	//IDC about 0  because we will not use that here.
+	curVal := num
 	for i := range exponent - 1 {
-		num *= num
+		curVal *= num
 		i = i
 	}
-	return num
-}
-
-func MaxJoltsForMaxSizeN(bank []int, startPoint, N int) int {
-	bankSize := len(bank)
-	latestSelected := bankSize - N // The latest we need to pick, e.g. if we have 4 elements [0,1,2,3] and want to choose 3, we need to pick all after index 1
-
-	// If the start point does not allow us to select enough, return 0
-	if startPoint > latestSelected {
-		return 0
-	}
-	if N == 2 {
-		overall := getMaxJoltSize2(bank[startPoint:])
-		fmt.Printf("Max Jolts for %v with size %d (basecase) = %d\n", bank[startPoint:], N, overall)
-		return overall
-	}
-	// If N == length, return all selected
-	if N == len(bank[startPoint:]) {
-		sum := 0
-		for _, val := range bank[startPoint:] {
-			sum += val
-			sum *= 10
-		}
-		// We multiplied one too many times
-		sum /= 10
-		fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, sum)
-		return sum
-	}
-
-	maxSizeNMinus1 := bank[startPoint]*IntegerPow(10, N-1) + MaxJoltsForMaxSizeN(bank, startPoint+1, N-1)
-	maxSizeIgnoreCurrent := MaxJoltsForMaxSizeN(bank, startPoint+1, N)
-	maxOverall := IntMax(maxSizeNMinus1, maxSizeIgnoreCurrent)
-	fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, maxOverall)
-
-	return maxOverall
-}
-
-func getMaxJoltSize12(bank []int) int {
-	return MaxJoltsForMaxSizeN(bank, 0, 12)
+	return curVal
 }
 
 func IntMax(x, y int) int {
@@ -118,19 +69,65 @@ func IntMax(x, y int) int {
 	return y
 }
 
+func MaxJoltsForMaxSizeN(bank []int, N int) int {
+	bankSize := len(bank)
+	latestSelected := bankSize - N // The latest we need to pick, e.g. if we have 4 elements [0,1,2,3] and want to choose 3, we need to pick all after index 1
+
+	// If the bank does not allow us to select enough, return 0
+	if len(bank) < latestSelected {
+		return 0
+	}
+	if N == 2 {
+		overall := getMaxJoltSize2(bank)
+		// fmt.Printf("Max Jolts for %v with size %d (basecase) = %d\n", bank[startPoint:], N, overall)
+		return overall
+	}
+	// If N == length, return all selected
+	if N == len(bank) {
+		sum := 0
+		for _, val := range bank {
+			sum += val
+			sum *= 10
+		}
+		// We multiplied one too many times
+		sum /= 10
+		// fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, sum)
+		return sum
+	}
+
+	maxSizeNMinus1 := bank[0]*IntegerPow(10, N-1) + MaxJoltsForMaxSizeN(bank[1:], N-1)
+	maxSizeIgnoreCurrent := MaxJoltsForMaxSizeN(bank[1:], N)
+	maxOverall := IntMax(maxSizeNMinus1, maxSizeIgnoreCurrent)
+	// fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, maxOverall)
+
+	return maxOverall
+}
+
+func MaxJoltsSize2(bank []int) int {
+	firstDigit := bank[0]
+	secondDigit := slices.Max(bank[1:])
+	return firstDigit*10 + secondDigit
+}
+
+// Base case
 func getMaxJoltSize2(bank []int) int {
 
 	currentMax := 0
 	for i := len(bank) - 2; i >= 0; i-- {
 		maxForSize := MaxJoltsSize2(bank[i:])
-		fmt.Printf("MaxJolt for bank %v with %c as the first digit = %d\n", bank, bank[i], maxForSize)
 		currentMax = IntMax(currentMax, maxForSize)
 	}
 
 	return currentMax
 }
 
-func Puzzle(file *os.File, joltFunc MaxJoltsForNAsStart) int {
+func getMaxJoltSizeN(bank []int, N int) int {
+	maxJoltsForBank := MaxJoltsForMaxSizeN(bank, N)
+	fmt.Printf("Max jolts for bank %v = %d\n", bank, maxJoltsForBank)
+	return maxJoltsForBank
+}
+
+func Puzzle(file *os.File, numberAllowed int) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	// For each one, split it by the '-'
@@ -148,7 +145,7 @@ func Puzzle(file *os.File, joltFunc MaxJoltsForNAsStart) int {
 			intList = append(intList, digit)
 		}
 
-		jolts := joltFunc(intList)
+		jolts := getMaxJoltSizeN(intList, numberAllowed)
 		runningTotal += jolts
 		fmt.Printf("MaxJolts for bank %v = %d\n", bankValue, jolts)
 	}
