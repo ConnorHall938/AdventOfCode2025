@@ -49,8 +49,8 @@ func main() {
 	fmt.Printf("Sum of available rolls found to be %d\n", numberAccessible)
 }
 
-var mapWidth int = -1  // This is assigned, -1 is fine so we know if it doesn't get assigned
-var mapHeight int = -1 // This gets counted, and used for indexing. If we start at 0 then we "have a row" before we start reading lines
+var mapWidth int = -1 // This is assigned, -1 is fine so we know if it doesn't get assigned
+var mapHeight int = 0
 
 // Ahhh why does no language natively support this?!
 func IntegerPow(num, exponent int) int {
@@ -101,13 +101,13 @@ func createCheckMap(x, y int) CheckMap {
 		delete(checkMap, MapPoint{x + 1, y - 1})
 	}
 	// Right side
-	if x == mapWidth {
+	if x == mapWidth-1 {
 		delete(checkMap, MapPoint{x + 1, y - 1})
 		delete(checkMap, MapPoint{x + 1, y})
 		delete(checkMap, MapPoint{x + 1, y + 1})
 	}
 	// Bottom
-	if y == mapHeight {
+	if y == mapHeight-1 {
 		delete(checkMap, MapPoint{x - 1, y + 1})
 		delete(checkMap, MapPoint{x, y + 1})
 		delete(checkMap, MapPoint{x + 1, y + 1})
@@ -119,8 +119,8 @@ func createCheckMap(x, y int) CheckMap {
 func countAvailableRolls(rollmap string) int {
 	totalCount := 0
 	cellsChecked := 0
-	for x := 0; x <= mapWidth; x++ {
-		for y := 0; y <= mapHeight; y++ {
+	for x := 0; x < mapWidth; x++ {
+		for y := 0; y < mapHeight; y++ {
 			// For each cell, if it's a roll
 			if rollAtPosition(rollmap, x, y) {
 				// Which cells should we check? Account for edges
@@ -157,7 +157,7 @@ func Puzzle(file *os.File) int {
 	for scanner.Scan() {
 		line := scanner.Text()
 		// For the love of god this should be constant.
-		mapWidth = len(line) - 1
+		mapWidth = len(line)
 		rollMap += line
 		mapHeight++
 	}
