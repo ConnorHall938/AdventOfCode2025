@@ -70,6 +70,13 @@ func IntMax(x, y int) int {
 	return y
 }
 
+func IntMin(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
+}
+
 type freshnessRange struct {
 	start int
 	end   int
@@ -99,36 +106,51 @@ func WithinRange(existingRange *freshnessRange, val int) bool {
 	return val >= existingRange.start && val <= existingRange.end
 }
 
-func appendFreshIngredients(start, end int, list *[]freshnessRange) {
-	// Check if we start, end or encompass an existing range
-	for i := range *list {
-		existingRange := &(*list)[i]
-		// Encompass the range, replace it
-		if start < existingRange.start && end > existingRange.end {
-			existingRange.start = start
-			existingRange.end = end
+func RemoveRangeFromList(list *[]freshnessRange, rangeToRemove freshnessRange) {
+	for i, focusRange := range *list {
+		if focusRange.start == rangeToRemove.start &&
+			focusRange.end == rangeToRemove.end {
+			*list = append((*list)[:i], (*list)[i+1:]...)
 			return
 		}
-		// Start inside the range
-		if WithinRange(existingRange, start) {
-			// If end is past the range, replace the end of the range
-			if end > existingRange.end {
-				existingRange.end = end
-				return
-			}
+	}
+}
+
+func appendFreshIngredients(start, end int, list *[]freshnessRange) {
+	// Gather ranges we start, end or encompass
+	involvedRanges := []freshnessRange{}
+	for i := range *list {
+		existingRange := &(*list)[i]
+		// Encompass the range
+		if start < existingRange.start && end > existingRange.end {
+			involvedRanges = append(involvedRanges, *existingRange)
 		}
-		// End within the range
-		if WithinRange(existingRange, end) {
-			// if start is before the range, replace the start of the range
-			if start < existingRange.start {
-				existingRange.start = start
-				return
-			}
+		// Start or end inside the range
+		if WithinRange(existingRange, start) || WithinRange(existingRange, end) {
+			involvedRanges = append(involvedRanges, *existingRange)
 		}
 
 	}
-	// This is a new range!
-	*list = append(*list, freshnessRange{start, end})
+
+	if len(involvedRanges) == 0 {
+		// This is a new range!
+		*list = append(*list, freshnessRange{start, end})
+		return
+	}
+
+	// This is a guess, BUT feels right
+	// If we involve more than 1 range, we can just take the max of all the ends and mins of all the starts and merge into 1
+	newRangeStart := start
+	newRangeEnd := end
+	for _, theInvolvedRange := range involvedRanges {
+		newRangeStart = IntMin(newRangeStart, theInvolvedRange.start)
+		newRangeEnd = IntMax(newRangeEnd, theInvolvedRange.end)
+	}
+	// Remove now we're done
+	for _, theInvolvedRange := range involvedRanges {
+		RemoveRangeFromList(list, theInvolvedRange)
+	}
+	*list = append(*list, freshnessRange{newRangeStart, newRangeEnd})
 }
 
 func IsIngredientFresh(ingredient int, freshIngredientsRanges []freshnessRange) bool {
@@ -145,7 +167,7 @@ func countTotalFresh(freshIngredientsRanges []freshnessRange) int {
 
 	for _, freshRange := range freshIngredientsRanges {
 		total += freshRange.end - freshRange.start
-		total += 2 // The range is inclusive, but the above cuts off the ends
+		total += 1 // The range is inclusive, but the above cuts off an end
 	}
 
 	return total
@@ -158,7 +180,7 @@ func Puzzle(file *os.File, countPresentFresh bool) int {
 	freshIngredients := []freshnessRange{}
 	// Input the non-spoiled ingedients
 	for scanner.Scan() {
-		fmt.Printf("Scanning line %d of freshness\n", debugLineCounter)
+		//fmt.Printf("Scanning line %d of freshness\n", debugLineCounter)
 		line := scanner.Text()
 		if line == "" {
 			debugLineCounter = 0
