@@ -11,6 +11,8 @@ import (
 
 const puzzleFileDefault = "puzzle.txt"
 
+type idCounter func(int) int
+
 func main() {
 
 	puzzlePart := flag.Int("Part", 1, "Which part of the puzzle? 1/2")
@@ -39,7 +41,9 @@ func main() {
 	sumOfBad := 0
 	switch *puzzlePart {
 	case 1:
-		sumOfBad = PuzzlePart1(file)
+		sumOfBad = Puzzle(file, IsBadIDPart1)
+	case 2:
+		sumOfBad = Puzzle(file, IsBadIDPart2)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -48,7 +52,7 @@ func main() {
 }
 
 // Return 1 or 0 for true or false, idk just want to
-func IsBadID(id int) int {
+func IsBadIDPart1(id int) int {
 	strID := strconv.Itoa(id)
 	if len(strID)%2 == 0 { //If it's even length, we should check
 		midpoint := (len(strID) / 2) // Maybe not -1
@@ -61,15 +65,20 @@ func IsBadID(id int) int {
 	return 0
 }
 
-func CountBetweenRange(startRange, endRange int) int {
+func IsBadIDPart2(id int) int {
+
+	return 0
+}
+
+func CountBetweenRange(startRange, endRange int, counterFunc idCounter) int {
 	count := 0
 	for i := startRange; i <= endRange; i++ {
-		count += i * IsBadID(i)
+		count += i * IsBadIDPart1(i)
 	}
 	return count
 }
 
-func PuzzlePart1(file *os.File) int {
+func Puzzle(file *os.File, counterFunc idCounter) int {
 	scanner := bufio.NewScanner(file)
 	// Get a list of first/last IDs
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -105,7 +114,7 @@ func PuzzlePart1(file *os.File) int {
 			fmt.Printf("Error parsing %v: %v\n", IDs[1], err)
 			continue
 		}
-		runningTotal += CountBetweenRange(startRange, endRange)
+		runningTotal += CountBetweenRange(startRange, endRange, counterFunc)
 	}
 
 	return runningTotal
