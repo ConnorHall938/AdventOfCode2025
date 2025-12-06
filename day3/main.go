@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 const puzzleFileDefault = "puzzle.txt"
@@ -43,7 +44,7 @@ func main() {
 	case 1:
 		sumOfJolt = Puzzle(file, 2)
 	case 2:
-		sumOfJolt = Puzzle(file, 5)
+		sumOfJolt = Puzzle(file, 12)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -69,7 +70,28 @@ func IntMax(x, y int) int {
 	return y
 }
 
+// Just hack this in, cba restructuring again
+type cacheKey struct {
+	bank string
+	n    int
+}
+
+var maxJoltsCache = make(map[cacheKey]int)
+
+func arrayToString(bank []int) string {
+	var builder strings.Builder
+	for _, digit := range bank {
+		builder.WriteString(strconv.Itoa(digit))
+	}
+	result := builder.String()
+	return result
+}
+
 func MaxJoltsForMaxSizeN(bank []int, N int) int {
+	key := cacheKey{arrayToString(bank), N}
+	if val, ok := maxJoltsCache[key]; ok {
+		return val
+	}
 	bankSize := len(bank)
 	latestSelected := bankSize - N // The latest we need to pick, e.g. if we have 4 elements [0,1,2,3] and want to choose 3, we need to pick all after index 1
 
@@ -80,6 +102,7 @@ func MaxJoltsForMaxSizeN(bank []int, N int) int {
 	if N == 2 {
 		overall := getMaxJoltSize2(bank)
 		// fmt.Printf("Max Jolts for %v with size %d (basecase) = %d\n", bank[startPoint:], N, overall)
+		maxJoltsCache[key] = overall
 		return overall
 	}
 	// If N == length, return all selected
@@ -92,12 +115,14 @@ func MaxJoltsForMaxSizeN(bank []int, N int) int {
 		// We multiplied one too many times
 		sum /= 10
 		// fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, sum)
+		maxJoltsCache[key] = sum
 		return sum
 	}
 
 	maxSizeNMinus1 := bank[0]*IntegerPow(10, N-1) + MaxJoltsForMaxSizeN(bank[1:], N-1)
 	maxSizeIgnoreCurrent := MaxJoltsForMaxSizeN(bank[1:], N)
 	maxOverall := IntMax(maxSizeNMinus1, maxSizeIgnoreCurrent)
+	maxJoltsCache[key] = maxOverall
 	// fmt.Printf("Max Jolts for %v with size %d = %d\n", bank[startPoint:], N, maxOverall)
 
 	return maxOverall
@@ -144,7 +169,6 @@ func Puzzle(file *os.File, numberAllowed int) int {
 			}
 			intList = append(intList, digit)
 		}
-
 		jolts := getMaxJoltSizeN(intList, numberAllowed)
 		runningTotal += jolts
 		fmt.Printf("MaxJolts for bank %v = %d\n", bankValue, jolts)
