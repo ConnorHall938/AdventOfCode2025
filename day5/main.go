@@ -42,9 +42,9 @@ func main() {
 	numberFresh := 0
 	switch *puzzlePart {
 	case 1:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, true)
 	case 2:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, false)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -140,7 +140,18 @@ func IsIngredientFresh(ingredient int, freshIngredientsRanges []freshnessRange) 
 	return false
 }
 
-func Puzzle(file *os.File) int {
+func countTotalFresh(freshIngredientsRanges []freshnessRange) int {
+	total := 0
+
+	for _, freshRange := range freshIngredientsRanges {
+		total += freshRange.end - freshRange.start
+		total += 2 // The range is inclusive, but the above cuts off the ends
+	}
+
+	return total
+}
+
+func Puzzle(file *os.File, countPresentFresh bool) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	debugLineCounter := 0
@@ -170,23 +181,27 @@ func Puzzle(file *os.File) int {
 
 	printSortedKeys(freshIngredients)
 
-	for scanner.Scan() {
-		fmt.Printf("Scanning line %d of ingredients - ", debugLineCounter)
-		line := scanner.Text()
-		ingredient, err := strconv.Atoi(line)
-		if err != nil {
-			fmt.Printf("Error converting string %v to int: %v\n", line, err)
-			return -1 // Handle the error appropriately
-		}
+	if countPresentFresh {
+		for scanner.Scan() {
+			fmt.Printf("Scanning line %d of ingredients - ", debugLineCounter)
+			line := scanner.Text()
+			ingredient, err := strconv.Atoi(line)
+			if err != nil {
+				fmt.Printf("Error converting string %v to int: %v\n", line, err)
+				return -1 // Handle the error appropriately
+			}
 
-		if IsIngredientFresh(ingredient, freshIngredients) {
-			runningTotal++
-			fmt.Println("Fresh")
-		} else {
-			fmt.Println("Not fresh")
-		}
+			if IsIngredientFresh(ingredient, freshIngredients) {
+				runningTotal++
+				fmt.Println("Fresh")
+			} else {
+				fmt.Println("Not fresh")
+			}
 
-		debugLineCounter++
+			debugLineCounter++
+		}
+	} else {
+		return countTotalFresh(freshIngredients)
 	}
 
 	return runningTotal
