@@ -47,9 +47,31 @@ func main() {
 	fmt.Printf("Sum of bad IDs found to be %d\n", sumOfBad)
 }
 
+// Return 1 or 0 for true or false, idk just want to
+func IsBadID(id int) int {
+	strID := strconv.Itoa(id)
+	if len(strID)%2 == 0 { //If it's even length, we should check
+		midpoint := (len(strID) / 2) // Maybe not -1
+		// fmt.Printf("Midpoint = %d, First half = (%v), Second half = (%v)", midpoint, id[:midpoint], id[midpoint:])
+		if strID[midpoint:] == strID[:midpoint] {
+			fmt.Printf("%d found to be naughty ID!\n", id)
+			return 1
+		}
+	}
+	return 0
+}
+
+func CountBetweenRange(startRange, endRange int) int {
+	count := 0
+	for i := startRange; i <= endRange; i++ {
+		count += i * IsBadID(i)
+	}
+	return count
+}
+
 func PuzzlePart1(file *os.File) int {
 	scanner := bufio.NewScanner(file)
-	// Get a list of first/last IDs... Not too important right now but might be useful for part 2
+	// Get a list of first/last IDs
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if atEOF && len(data) == 0 {
 			return 0, nil, nil
@@ -68,28 +90,22 @@ func PuzzlePart1(file *os.File) int {
 	runningTotal := 0
 	// For each one, split it by the '-'
 	for scanner.Scan() {
-		line := scanner.Text()
+		idRange := scanner.Text()
 		// fmt.Printf("Processing line %v\n", line)
 		// fmt.Println(line)
-		IDs := strings.Split(line, "-")
-
-		for _, id := range IDs {
-			// fmt.Printf("Processing ID %v\n", id)
-			if len(id)%2 != 0 {
-				// fmt.Printf("Skipping id %v as it has odd length %d\n", id, len(id))
-				continue
-			}
-			midpoint := (len(id) / 2) // Maybe not -1
-			// fmt.Printf("Midpoint = %d, First half = (%v), Second half = (%v)", midpoint, id[:midpoint], id[midpoint:])
-			if id[midpoint:] == id[:midpoint] {
-				val, err := strconv.Atoi(id[midpoint:])
-				if err != nil {
-					fmt.Printf("Error while parsing int: %v\n", err)
-				}
-				fmt.Printf("%v found to be naughty ID! Adding value %v.\n", id, id[:midpoint])
-				runningTotal += val
-			}
+		IDs := strings.Split(idRange, "-")
+		// fmt.Printf("Midpoint = %d, First half = (%v), Second half = (%v)", midpoint, id[:midpoint], id[midpoint:])
+		startRange, err := strconv.Atoi(IDs[0])
+		if err != nil {
+			fmt.Printf("Error parsing %v: %v\n", IDs[0], err)
+			continue
 		}
+		endRange, err := strconv.Atoi(IDs[1])
+		if err != nil {
+			fmt.Printf("Error parsing %v: %v\n", IDs[1], err)
+			continue
+		}
+		runningTotal += CountBetweenRange(startRange, endRange)
 	}
 
 	return runningTotal
