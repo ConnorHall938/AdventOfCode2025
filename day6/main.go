@@ -39,9 +39,9 @@ func main() {
 	numberFresh := 0
 	switch *puzzlePart {
 	case 1:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, false)
 	case 2:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, true)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
@@ -74,12 +74,43 @@ func IntMin(x, y int) int {
 	return x
 }
 
-func Puzzle(file *os.File) int {
+func withHumanMath(inputs [][]string, operands []string) int {
+	runningTotal := 0
+	for idx, val := range operands {
+		currentTotal := 0
+		switch val {
+		case "*":
+			currentTotal = 1
+			for _, numbersList := range inputs {
+				num, err := strconv.Atoi(numbersList[idx])
+				if err != nil {
+					fmt.Printf("Error converting string %v to int: %v\n", numbersList[idx], err)
+					return -1 // Handle the error appropriately
+				}
+				currentTotal *= num
+			}
+		case "+":
+			currentTotal = 0
+			for _, numbersList := range inputs {
+				num, err := strconv.Atoi(numbersList[idx])
+				if err != nil {
+					fmt.Printf("Error converting string %v to int: %v\n", numbersList[idx], err)
+					return -1 // Handle the error appropriately
+				}
+				currentTotal += num
+			}
+		}
+		runningTotal += currentTotal
+	}
+	return runningTotal
+}
+
+func Puzzle(file *os.File, fixTheirStupidAssMath bool) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	lineCounter := 0
 	line := "" // Litterally only outside the loop so I can break and still use the line
-	numbers := [][]int{}
+	numbers := [][]string{}
 	// Parse the lines
 	for scanner.Scan() {
 		fmt.Printf("Scanning line %d of input\n", lineCounter)
@@ -95,16 +126,8 @@ func Puzzle(file *os.File) int {
 			}
 		}
 
-		numbers = append(numbers, make([]int, len(filteredNumberStrings)))
-
-		for i, val := range filteredNumberStrings {
-			num, err := strconv.Atoi(val)
-			if err != nil {
-				fmt.Printf("Error converting string %v to int: %v\n", line, err)
-				return -1 // Handle the error appropriately
-			}
-			numbers[lineCounter][i] = num
-		}
+		numbers = append(numbers, make([]string, len(filteredNumberStrings)))
+		copy(numbers[lineCounter], filteredNumberStrings)
 		lineCounter++
 	}
 
@@ -117,22 +140,10 @@ func Puzzle(file *os.File) int {
 		}
 	}
 
-	for idx, val := range filteredOperationStrings {
-		currentTotal := 0
-		switch val {
-		case "*":
-			currentTotal = 1
-			for _, numbersList := range numbers {
-				currentTotal *= numbersList[idx]
-			}
-		case "+":
-			currentTotal = 0
-			for _, numbersList := range numbers {
-				currentTotal += numbersList[idx]
-			}
-		}
-		runningTotal += currentTotal
+	if fixTheirStupidAssMath {
+		return 0
 	}
+	return withHumanMath(numbers, filteredOperationStrings)
 
 	return runningTotal
 }
