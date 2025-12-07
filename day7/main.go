@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 )
 
 const puzzleFileDefault = "puzzle.txt"
@@ -37,14 +38,14 @@ func main() {
 	numberFresh := 0
 	switch *puzzlePart {
 	case 1:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, false)
 	case 2:
-		numberFresh = Puzzle(file)
+		numberFresh = Puzzle(file, true)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 	}
 
-	fmt.Printf("Total fresh ingredients found to be %d\n", numberFresh)
+	fmt.Printf("Total result is %d\n", numberFresh)
 }
 
 // Ahhh why does no language natively support this?!
@@ -109,16 +110,74 @@ func beamsFromLine(currentBeams *map[int]struct{}, line string) int {
 	return splittersHit
 }
 
-func Puzzle(file *os.File) int {
+func FindNewWorlds(currentWorld int, line string) []int {
+
+	if line[currentWorld] != '^' {
+		return []int{currentWorld} // We didn't hit a splitter
+	}
+
+	newBeamWorlds := []int{currentWorld + 1, currentWorld - 1}
+
+	return newBeamWorlds
+}
+
+// Edits the input beam worlds, potentially adding some.
+func beamsFromLineManyWorlds(currentBeamworlds *[]int, line string) {
+	newWorlds := []int{}
+	// For each world
+	for _, beamWorld := range *currentBeamworlds {
+		newWorldsFromWorld := FindNewWorlds(beamWorld, line)
+		newWorlds = append(newWorlds, newWorldsFromWorld...)
+	}
+	*currentBeamworlds = newWorlds
+}
+
+func Puzzle(file *os.File, manyWorlds bool) int {
 	scanner := bufio.NewScanner(file)
 	runningTotal := 0
 	debugLineCounter := 0
-	currentBeams := make(map[int]struct{}) // Column indexes for where currently active beams are
-	for scanner.Scan() {
-		fmt.Printf("Scanning line %d of beams\n", debugLineCounter)
-		line := scanner.Text()
-		runningTotal += beamsFromLine(&currentBeams, line)
-		debugLineCounter++
+	if !manyWorlds {
+		currentBeams := make(map[int]struct{}) // Column indexes for where currently active beams are
+		for scanner.Scan() {
+			fmt.Printf("Scanning line %d of beams\n", debugLineCounter)
+			line := scanner.Text()
+			runningTotal += beamsFromLine(&currentBeams, line)
+			debugLineCounter++
+		}
+	} else {
+		currentBeamWorlds := []int{} // Column index for where the active beam is
+
+		// Hack for the first row
+		if scanner.Scan() {
+			line := scanner.Text()
+			for idx, val := range line {
+				if val == 'S' {
+					currentBeamWorlds = append(currentBeamWorlds, idx)
+					break
+				}
+			}
+		} else {
+			return -1
+		}
+
+		//currentPaths := 1
+		for scanner.Scan() {
+			lineStart := time.Now()
+
+			fmt.Printf("Scanning line %d of beams\n", debugLineCounter)
+			line := scanner.Text()
+			beamsFromLineManyWorlds(&currentBeamWorlds, line)
+			elapsed := time.Since(lineStart)
+
+			fmt.Printf(
+				"Line %d took %s — worlds: %d\n",
+				debugLineCounter,
+				elapsed,
+				len(currentBeamWorlds),
+			)
+			debugLineCounter++
+		}
+		runningTotal = len(currentBeamWorlds)
 	}
 
 	return runningTotal
