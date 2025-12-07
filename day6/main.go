@@ -73,9 +73,86 @@ func IntMin(x, y int) int {
 	return x
 }
 
-func DoItWrong(file *os.File) int {
+func ParseWrongNumber(digits []rune) int {
+	currentVal := 0
+	for _, digit := range digits {
+		if digit != ' ' && digit != '*' && digit != '+' {
+			digitVal, err := strconv.Atoi(string(digit))
+			if err != nil {
+				fmt.Printf("Error converting string %v to int: %v\n", string(digit), err)
+				return -1 // Handle the error appropriately
+			}
+			currentVal = currentVal*10 + digitVal
+		}
+	}
+	return currentVal
+}
 
-	return 0
+func getColumnRunes(lines []string, column int) []rune {
+	runes := make([]rune, len(lines))
+	for idx, line := range lines {
+		runes[idx] = rune(line[column])
+	}
+	return runes
+}
+
+func EmptyColumn(columnRunes []rune) bool {
+	for _, currentRune := range columnRunes {
+		if currentRune != ' ' {
+			return false
+		}
+	}
+	return true
+}
+
+func ComputeCurrent(values []int, operand rune) int {
+	currentTotal := 0
+	switch operand {
+	case '*':
+		currentTotal = 1
+		for _, num := range values {
+			currentTotal *= num
+		}
+	case '+':
+		currentTotal = 0
+		for _, num := range values {
+			currentTotal += num
+		}
+	}
+	return currentTotal
+}
+
+func DoItWrong(file *os.File) int {
+	scanner := bufio.NewScanner(file)
+	lines := []string{}
+	// Collect the lines
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
+	}
+
+	workingNumbers := []int{}
+	finishedValues := []int{}
+	// Scan through column by column FROM THE LEFT
+	// Each column is a number
+	for columnNumber := len(lines[0]) - 1; columnNumber >= 0; columnNumber-- {
+		columnVals := getColumnRunes(lines, columnNumber)
+		if EmptyColumn(columnVals) {
+			continue
+		}
+		workingNumbers = append(workingNumbers, ParseWrongNumber(columnVals))
+		if columnVals[len(columnVals)-1] != ' ' {
+			computed := ComputeCurrent(workingNumbers, columnVals[len(columnVals)-1])
+			finishedValues = append(finishedValues, computed)
+			workingNumbers = []int{}
+		}
+	}
+
+	sum := 0
+	for _, val := range finishedValues {
+		sum += val
+	}
+	return sum
 }
 
 func DoItNormally(file *os.File) int {
