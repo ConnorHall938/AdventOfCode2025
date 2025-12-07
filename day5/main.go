@@ -12,8 +12,6 @@ import (
 
 const puzzleFileDefault = "puzzle.txt"
 
-type MaxJoltsForNAsStart func([]int) int
-
 func main() {
 
 	puzzlePart := flag.Int("Part", 1, "Which part of the puzzle? 1/2")
