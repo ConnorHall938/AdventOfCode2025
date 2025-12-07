@@ -110,26 +110,28 @@ func beamsFromLine(currentBeams *map[int]struct{}, line string) int {
 	return splittersHit
 }
 
-func FindNewWorlds(currentWorld int, line string) []int {
-
-	if line[currentWorld] != '^' {
-		return []int{currentWorld} // We didn't hit a splitter
-	}
-
-	newBeamWorlds := []int{currentWorld + 1, currentWorld - 1}
-
-	return newBeamWorlds
+func DoesBeamSplit(column int, line string) bool {
+	return line[column] == '^'
 }
 
 // Edits the input beam worlds, potentially adding some.
-func beamsFromLineManyWorlds(currentBeamworlds *[]int, line string) {
-	newWorlds := []int{}
-	// For each world
-	for _, beamWorld := range *currentBeamworlds {
-		newWorldsFromWorld := FindNewWorlds(beamWorld, line)
-		newWorlds = append(newWorlds, newWorldsFromWorld...)
+func beamsFromLineManyWorlds(timelineColumns *[]int, line string) {
+	newTimelineColumns := make([]int, len(*timelineColumns))
+	copy(newTimelineColumns, *timelineColumns)
+	// For each column
+	for column, beamsInColumn := range *timelineColumns {
+		if beamsInColumn == 0 {
+			continue
+		}
+
+		beamSplits := DoesBeamSplit(column, line)
+		if beamSplits {
+			newTimelineColumns[column-1] += beamsInColumn
+			newTimelineColumns[column+1] += beamsInColumn
+			newTimelineColumns[column] = 0
+		}
 	}
-	*currentBeamworlds = newWorlds
+	*timelineColumns = newTimelineColumns
 }
 
 func Puzzle(file *os.File, manyWorlds bool) int {
@@ -145,22 +147,25 @@ func Puzzle(file *os.File, manyWorlds bool) int {
 			debugLineCounter++
 		}
 	} else {
-		currentBeamWorlds := []int{} // Column index for where the active beam is
 
 		// Hack for the first row
+		startIndex := 0
+		lineLength := 0
 		if scanner.Scan() {
 			line := scanner.Text()
+			lineLength = len(line)
 			for idx, val := range line {
 				if val == 'S' {
-					currentBeamWorlds = append(currentBeamWorlds, idx)
+					startIndex = idx
 					break
 				}
 			}
 		} else {
 			return -1
 		}
-
-		//currentPaths := 1
+		currentBeamWorlds := make([]int, lineLength) // Number of timelines in each column
+		currentBeamWorlds[startIndex] = 1
+		totalTimelines := 0
 		for scanner.Scan() {
 			lineStart := time.Now()
 
@@ -169,15 +174,20 @@ func Puzzle(file *os.File, manyWorlds bool) int {
 			beamsFromLineManyWorlds(&currentBeamWorlds, line)
 			elapsed := time.Since(lineStart)
 
+			totalTimelines = 0
+			for _, val := range currentBeamWorlds {
+				totalTimelines += val
+			}
+
 			fmt.Printf(
 				"Line %d took %s — worlds: %d\n",
 				debugLineCounter,
 				elapsed,
-				len(currentBeamWorlds),
+				totalTimelines,
 			)
 			debugLineCounter++
 		}
-		runningTotal = len(currentBeamWorlds)
+		runningTotal = totalTimelines
 	}
 
 	return runningTotal
