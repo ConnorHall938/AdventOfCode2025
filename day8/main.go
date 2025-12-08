@@ -49,9 +49,9 @@ func main() {
 	numberBoxes := 0
 	switch *puzzlePart {
 	case 1:
-		numberBoxes = Puzzle(file, numberToConnect)
+		numberBoxes = Puzzle(file, numberToConnect, false)
 	case 2:
-		numberBoxes = Puzzle(file, numberToConnect)
+		numberBoxes = Puzzle(file, numberToConnect, true)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 		return
@@ -102,7 +102,7 @@ func DistanceBetweenBoxes(box1, box2 Box) float64 {
 	return math.Sqrt(float64(sumSquares))
 }
 
-func Puzzle(file *os.File, numberBoxes int) int {
+func Puzzle(file *os.File, numberBoxes int, distanceBetweenLast2 bool) int {
 	scanner := bufio.NewScanner(file)
 	boxCount := 0
 
@@ -159,6 +159,7 @@ func Puzzle(file *os.File, numberBoxes int) int {
 		groupSizes[i] = 1
 	}
 	pairsGrouped := 0
+	lastBoxes := make([]Box, 2)
 	for i := range boxPairDistancesList {
 		box1 := boxPairDistancesList[i].boxes.b1
 		box2 := boxPairDistancesList[i].boxes.b2
@@ -186,9 +187,19 @@ func Puzzle(file *os.File, numberBoxes int) int {
 		}
 
 		pairsGrouped++
-		if pairsGrouped >= numberBoxes {
+		if pairsGrouped >= numberBoxes && !distanceBetweenLast2 {
 			break
 		}
+		// If this was the last box -
+		if groupSizes[box1.groupNumber] == len(boxList) {
+			lastBoxes[0] = *box1
+			lastBoxes[1] = *box2
+			break
+		}
+	}
+
+	if distanceBetweenLast2 {
+		return lastBoxes[0].x * lastBoxes[1].x
 	}
 
 	slices.SortFunc(groupSizes, func(a, b int) int {
