@@ -40,9 +40,9 @@ func main() {
 	numberBoxes := 0
 	switch *puzzlePart {
 	case 1:
-		numberBoxes = Puzzle(file)
+		numberBoxes = Puzzle(file, false)
 	case 2:
-		numberBoxes = Puzzle(file)
+		numberBoxes = Puzzle(file, true)
 	default:
 		fmt.Println("Invalid part number! Please enter 1")
 		return
@@ -54,7 +54,7 @@ func main() {
 // Ahhh why does no language natively support this?!
 func IntegerPow(num, exponent int) int {
 	curVal := 1
-	for range exponent {
+	for i := 0; i < exponent; i++ {
 		curVal *= num
 	}
 	return curVal
@@ -79,12 +79,12 @@ type Point struct {
 }
 
 type pointPair struct {
-	p1, p2 *Point
+	p1, p2 Point
 }
 
 type pointPairArea struct {
 	area  int
-	pairs *pointPair
+	pairs pointPair
 }
 
 func AreaBetweenPoints(p1, p2 Point) int {
@@ -103,7 +103,86 @@ func AreaBetweenPoints(p1, p2 Point) int {
 	return area
 }
 
-func Puzzle(file *os.File) int {
+// Return -1 if negative, 1 if posive
+
+func IntSign(x int) int {
+	if x >= 0 {
+		return 1
+	}
+	return -1
+}
+
+// Returns a list of points that pass the filter
+func PointsFilter(points []Point, keep func(Point) bool) []Point {
+	filteredPoints := []Point{}
+	for _, p := range points {
+		if keep(p) {
+			filteredPoints = append(filteredPoints, p)
+		}
+	}
+	return filteredPoints
+}
+
+// Function to find green points that can be corners
+// This is going to be awfully inefficient (:
+func AddGreenPointsEdges(points []Point) map[Point]struct{} {
+	newPoints := []Point{}
+	greenMap := map[Point]struct{}{}
+	// Draw vertical lines
+	for _, point1 := range points {
+		// Points that are on the same x coordinate as point1
+		drawTo := PointsFilter(points, func(p Point) bool { return (p.x == point1.x && p.y != point1.y) })
+		for _, point2 := range drawTo {
+			// Jesus christ, 3 loops?!
+			direction := IntSign(point2.y - point1.y)
+			for y := point1.y; y != point2.y; y += direction {
+				newPoints = append(newPoints, Point{-1, point1.x, y})
+				greenMap[Point{-1, point1.x, y}] = struct{}{}
+			}
+		}
+	}
+
+	// This PAINS me but also just walk each Y between each green tile until we hit one that already exists (Was added by the first for loop)
+	// Y coordinate of the first row to walk
+	minY := slices.MinFunc(points, func(a, b Point) int { return a.y - b.y }).y + 1
+	// Y coordinate of the last row to walk
+	maxY := slices.MaxFunc(points, func(a, b Point) int { return a.y - b.y }).y
+	for rowIdx := minY; rowIdx <= maxY; rowIdx++ {
+		// Where to start our walk
+		minX := slices.MinFunc(PointsFilter(newPoints, func(p Point) bool { return p.y == rowIdx }), func(a, b Point) int { return a.x - b.x }).x
+		maxX := slices.MaxFunc(PointsFilter(newPoints, func(p Point) bool { return p.y == rowIdx }), func(a, b Point) int { return a.x - b.x }).x
+		amPlacing := true
+		for columnIdx := minX + 1; columnIdx <= maxX; columnIdx++ {
+			newPoint := Point{-1, columnIdx, rowIdx}
+			_, inPoints := greenMap[newPoint]
+			if inPoints {
+				amPlacing = !amPlacing
+			} else if amPlacing {
+				greenMap[newPoint] = struct{}{}
+			}
+		}
+	}
+	return greenMap
+}
+
+// Function to remove pairs if there isn't a 3rd point at another corner
+func FilterPointPairs(pointPairs *[]pointPair, greenPoints map[Point]struct{}) {
+	for i := 0; i < len(*pointPairs); /* Don't increment i - We only increment if we don't remove an element*/ {
+		possibleGreen1 := Point{-1, (*pointPairs)[i].p1.x, (*pointPairs)[i].p2.y}
+		possibleGreen2 := Point{-1, (*pointPairs)[i].p2.x, (*pointPairs)[i].p1.y}
+		_, green1Exists := greenPoints[possibleGreen1]
+		_, green2Exists := greenPoints[possibleGreen2]
+		if green1Exists && green2Exists {
+			i++
+			continue
+		} else {
+			// Neither exist - Remove the pair
+			*pointPairs = append((*pointPairs)[:i], (*pointPairs)[i+1:]...)
+		}
+	}
+}
+
+func Puzzle(file *os.File, part2 bool) int {
 	scanner := bufio.NewScanner(file)
 	pointCount := 0
 
@@ -135,15 +214,25 @@ func Puzzle(file *os.File) int {
 		pointCount++
 	}
 
-	// Find area for each pair of points
-	pointPairAreas := map[int]*pointPair{}
+	pointPairs := []pointPair{}
 	for i := 0; i < len(pointList)-1; i++ {
-		point1 := &pointList[i]
+		point1 := pointList[i]
 		for j := i + 1; j < len(pointList); j++ {
-			point2 := &pointList[j]
-			pairArea := AreaBetweenPoints(*point1, *point2)
-			pointPairAreas[pairArea] = &pointPair{point1, point2}
+			point2 := pointList[j]
+			pointPairs = append(pointPairs, pointPair{point1, point2})
 		}
+	}
+
+	if part2 {
+		greenPointCorners := AddGreenPointsEdges(pointList)
+		FilterPointPairs(&pointPairs, greenPointCorners)
+	}
+
+	// Find area for each pair of points
+	pointPairAreas := map[int]pointPair{}
+	for i := 0; i < len(pointPairs); i++ {
+		pairArea := AreaBetweenPoints(pointPairs[i].p1, pointPairs[i].p2)
+		pointPairAreas[pairArea] = pointPairs[i]
 	}
 
 	// Sort the areas
